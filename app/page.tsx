@@ -3,6 +3,7 @@
 import { FormEvent, useState } from 'react';
 
 const specialties = ['Engine & Drivetrain', 'Body & Collision', 'Electrical', 'Heavy-Duty & Fleet', 'Performance', 'Other'];
+const repFormUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSct0KoTNzMRKQefZorcdMPujSK17oKatmad8gcSh_AGQ8ZYhw/formResponse';
 
 function Mark() {
   return <span className="mark" aria-hidden="true"><i>DP</i></span>;
@@ -10,12 +11,40 @@ function Mark() {
 
 export default function Home() {
   const [repSent, setRepSent] = useState(false);
+  const [repSending, setRepSending] = useState(false);
+  const [repError, setRepError] = useState(false);
   const [updateSent, setUpdateSent] = useState(false);
 
-  function submitRep(event: FormEvent<HTMLFormElement>) {
+  async function submitRep(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setRepSent(true);
-    event.currentTarget.reset();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const googleData = new URLSearchParams({
+      'entry.828196774': String(data.get('name') ?? ''),
+      'entry.1859909407': String(data.get('email') ?? ''),
+      'entry.257469089': String(data.get('phone') ?? ''),
+      'entry.785943603': String(data.get('company') ?? ''),
+      'entry.2119522505': String(data.get('specialty') ?? ''),
+      'entry.1198560176': String(data.get('area') ?? ''),
+    });
+
+    setRepSending(true);
+    setRepError(false);
+
+    try {
+      await fetch(repFormUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: googleData.toString(),
+      });
+      setRepSent(true);
+      form.reset();
+    } catch {
+      setRepError(true);
+    } finally {
+      setRepSending(false);
+    }
   }
 
   function submitUpdates(event: FormEvent<HTMLFormElement>) {
@@ -78,9 +107,10 @@ export default function Home() {
             {repSent ? <div className="success" role="status"><Mark /><h3>You&apos;re on the list.</h3><p>Thanks for raising your hand. We&apos;ll be in touch as the founding DocPartz rep network takes shape.</p><button onClick={() => setRepSent(false)}>Submit another response</button></div> :
             <form onSubmit={submitRep}>
               <div className="fields two"><label>Full name<input name="name" placeholder="Your name" autoComplete="name" required /></label><label>Email address<input name="email" type="email" placeholder="you@company.com" autoComplete="email" required /></label></div>
-              <div className="fields two"><label>Phone number<input name="phone" type="tel" placeholder="(555) 000-0000" autoComplete="tel" required /></label><label>Company<input name="company" placeholder="Company name" autoComplete="organization" required /></label></div>
+              <div className="fields two"><label>Phone number<input name="phone" type="tel" placeholder="(555) 000-0000" autoComplete="tel" /></label><label>Company<input name="company" placeholder="Company name" autoComplete="organization" /></label></div>
               <div className="fields two"><label>Parts specialty<select name="specialty" defaultValue="" required><option value="" disabled>Select a specialty</option>{specialties.map(item => <option key={item}>{item}</option>)}</select></label><label>Service area<input name="area" placeholder="City, state, or region" required /></label></div>
-              <button className="submit" type="submit">Sign Up to Be a Parts Rep <span>→</span></button>
+              <button className="submit" type="submit" disabled={repSending}>{repSending ? 'Sending…' : <>Sign Up to Be a Parts Rep <span>→</span></>}</button>
+              {repError && <small role="alert">We couldn&apos;t send that signup. Please try again.</small>}
               <small>By submitting, you agree to receive DocPartz launch and rep-network updates.</small>
             </form>}
           </div>
